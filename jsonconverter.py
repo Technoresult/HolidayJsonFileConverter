@@ -40,8 +40,10 @@ if st.button("Convert to JSON"):
                 # Format dates for JSON
                 start_date = date.strftime("%Y-%m-%d")
                 
-                # Calculate end date (next day)
-                end_date = (date.replace(day=date.day + 1)).strftime("%Y-%m-%d")
+                # Calculate end date (next day) - using timedelta instead of replace to handle month boundaries
+                from datetime import timedelta
+                next_day = date + timedelta(days=1)
+                end_date = next_day.strftime("%Y-%m-%d")
                 
                 # Create holiday entry
                 holiday = {
