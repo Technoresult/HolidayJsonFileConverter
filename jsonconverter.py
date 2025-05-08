@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime
 import json
+import re
 
 st.title("Holiday Data Converter")
 
@@ -20,35 +21,39 @@ if st.button("Convert to JSON"):
     if raw_data:
         # Parse the raw data
         holidays = []
-        for line in raw_data.strip().split('\n'):
-            if not line.strip():
-                continue
+        
+        # Use regex to find date patterns and extract holiday entries
+        date_pattern = r'(\d{2}-[A-Za-z]{3}-\d{2})\s+([A-Za-z]+)\s+([^M]+?)\s+(Mandatory|Optional)'
+        matches = re.findall(date_pattern, raw_data)
+        
+        if not matches:
+            st.error("Could not parse any holiday entries. Please check the format.")
+        
+        for match in matches:
+            date_str, day, name, holiday_type = match
+            name = name.strip()  # Remove leading/trailing whitespace
+            
+            # Parse the date
+            try:
+                date = datetime.strptime(date_str, "%d-%b-%y")
                 
-            parts = line.split(' ', 3)  # Split into date, day, name, type
-            if len(parts) >= 4:
-                date_str, day, name, holiday_type = parts
+                # Format dates for JSON
+                start_date = date.strftime("%Y-%m-%d")
                 
-                # Parse the date
-                try:
-                    date = datetime.strptime(date_str, "%d-%b-%y")
-                    
-                    # Format dates for JSON
-                    start_date = date.strftime("%Y-%m-%d")
-                    
-                    # Calculate end date (next day)
-                    end_date = (date.replace(day=date.day + 1)).strftime("%Y-%m-%d")
-                    
-                    # Create holiday entry
-                    holiday = {
-                        "subject": name,
-                        "start": start_date,
-                        "end": end_date,
-                        "type": holiday_type
-                    }
-                    
-                    holidays.append(holiday)
-                except ValueError as e:
-                    st.error(f"Error parsing date '{date_str}': {e}")
+                # Calculate end date (next day)
+                end_date = (date.replace(day=date.day + 1)).strftime("%Y-%m-%d")
+                
+                # Create holiday entry
+                holiday = {
+                    "subject": name,
+                    "start": start_date,
+                    "end": end_date,
+                    "type": holiday_type
+                }
+                
+                holidays.append(holiday)
+            except ValueError as e:
+                st.error(f"Error parsing date '{date_str}': {e}")
         
         # Create the JSON structure
         result = {"holidays": holidays}
