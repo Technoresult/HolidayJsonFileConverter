@@ -5,25 +5,27 @@ import json
 import re
 
 st.title("Holiday Data Converter")
-
 st.write("""
 This app converts raw holiday data into a structured JSON format.
-Enter your raw holiday data in the format: 
-`DD-MMM-YY Day Name Type`
+Enter your raw holiday data in various formats:
+- `DD-MMM-YY Day Name Type` (e.g., 26-Jan-24 Friday Republic Day Mandatory)
+- `DD-MM-YYYY Day Name Type` (e.g., 15-08-2025 Friday Independence Day Mandatory)
 """)
 
 # Create a text area for input
 raw_data = st.text_area("Enter raw holiday data:", 
                         height=300,
-                        placeholder="Example:\n26-Jan-24 Friday Republic Day Mandatory\n09-Apr-24 Tuesday Ugadi / Gudi Padwa Mandatory")
+                        placeholder="Example:\n26-Jan-24 Friday Republic Day Mandatory\n15-08-2025 Friday Independence Day Mandatory")
 
 if st.button("Convert to JSON"):
     if raw_data:
         # Parse the raw data
         holidays = []
         
-        # Use regex to find date patterns and extract holiday entries
-        date_pattern = r'(\d{2}-[A-Za-z]{3}-\d{2})\s+([A-Za-z]+)\s+([^M]+?)\s+(Mandatory|Optional)'
+        # Combined regex pattern to match different date formats
+        # Format 1: DD-MMM-YY (26-Jan-24)
+        # Format 2: DD-MM-YYYY (15-08-2025)
+        date_pattern = r'(\d{2}-(?:\d{2}-\d{4}|[A-Za-z]{3}-\d{2}))\s+([A-Za-z]+)\s+([^M]+?)\s+(Mandatory|Optional)'
         matches = re.findall(date_pattern, raw_data)
         
         if not matches:
@@ -33,14 +35,20 @@ if st.button("Convert to JSON"):
             date_str, day, name, holiday_type = match
             name = name.strip()  # Remove leading/trailing whitespace
             
-            # Parse the date
+            # Parse the date based on its format
             try:
-                date = datetime.strptime(date_str, "%d-%b-%y")
+                # Try different date formats
+                if re.match(r'\d{2}-\d{2}-\d{4}', date_str):  # DD-MM-YYYY
+                    date = datetime.strptime(date_str, "%d-%m-%Y")
+                elif re.match(r'\d{2}-[A-Za-z]{3}-\d{2}', date_str):  # DD-MMM-YY
+                    date = datetime.strptime(date_str, "%d-%b-%y")
+                else:
+                    raise ValueError(f"Unrecognized date format: {date_str}")
                 
                 # Format dates for JSON
                 start_date = date.strftime("%Y-%m-%d")
                 
-                # Calculate end date (next day) - using timedelta instead of replace to handle month boundaries
+                # Calculate end date (next day)
                 from datetime import timedelta
                 next_day = date + timedelta(days=1)
                 end_date = next_day.strftime("%Y-%m-%d")
@@ -77,17 +85,22 @@ if st.button("Convert to JSON"):
 
 # Show example of input and output formats
 with st.expander("Show Example"):
-    st.subheader("Example Input")
-    st.code("""26-Jan-24 Friday Republic Day Mandatory
+    st.subheader("Examples of Valid Input Formats")
+    st.code("""# Format 1: DD-MMM-YY
+26-Jan-24 Friday Republic Day Mandatory
 09-Apr-24 Tuesday Ugadi / Gudi Padwa Mandatory
-01-May-24 Wednesday May Day Mandatory""")
+
+# Format 2: DD-MM-YYYY
+15-08-2025 Friday Independence Day Mandatory
+25-12-2025 Thursday Christmas Day Mandatory""")
     
     st.subheader("Example Output")
     example_output = {
         "holidays": [
             {"subject": "Republic Day", "start": "2024-01-26", "end": "2024-01-27", "type": "Mandatory"},
             {"subject": "Ugadi / Gudi Padwa", "start": "2024-04-09", "end": "2024-04-10", "type": "Mandatory"},
-            {"subject": "May Day", "start": "2024-05-01", "end": "2024-05-02", "type": "Mandatory"}
+            {"subject": "Independence Day", "start": "2025-08-15", "end": "2025-08-16", "type": "Mandatory"},
+            {"subject": "Christmas Day", "start": "2025-12-25", "end": "2025-12-26", "type": "Mandatory"}
         ]
     }
     st.json(example_output)
